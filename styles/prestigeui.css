@@ -1,0 +1,24 @@
+/* Keyframes used by Shine Button and Basic Marquee. Add to your global CSS (Tailwind CSS v4). */
+
+@theme inline {
+  --animate-shine-sweep: shine-sweep 1.4s ease-in-out;
+  --animate-marquee: marquee 30s linear infinite;
+}
+
+@keyframes shine-sweep {
+  0% {
+    transform: translateX(-120%) skewX(-16deg);
+  }
+  100% {
+    transform: translateX(220%) skewX(-16deg);
+  }
+}
+
+@keyframes marquee {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
