@@ -189,6 +189,8 @@ export type IllustrationOrbitProps = {
   name?: string;
   /** Eight tools around it, clockwise from the top right. */
   tools?: OrbitTool[];
+  /** Holds the animation where it is, e.g. to play only on hover. Before it first plays it shows the finished state. */
+  paused?: boolean;
   className?: string;
 };
 
@@ -196,9 +198,10 @@ function IllustrationOrbit({
   center = "claude",
   name = "Claude",
   tools = TOOLS,
+  paused = false,
   className,
 }: IllustrationOrbitProps) {
-  const { ref, time } = useLoop(LOOP, TIMES.wide.fade - 0.3);
+  const { ref, time } = useLoop(LOOP, TIMES.wide.fade - 0.3, paused);
   const list = tools.slice(0, 8);
 
   return (

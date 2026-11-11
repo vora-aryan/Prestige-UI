@@ -146,20 +146,23 @@ export const travel = (route: Route, speed = SPEED) => route.len / speed;
 
 /**
  * A looping clock in seconds. It runs only while the illustration is on
- * screen, and holds at `rest` (the finished state) when motion is reduced.
+ * screen and not `paused`, and holds at `rest` (the finished state) when
+ * motion is reduced or when paused before it has ever played.
  */
-export function useLoop(duration: number, rest: number) {
+export function useLoop(duration: number, rest: number, paused = false) {
   const ref = React.useRef<HTMLDivElement>(null);
   const reduce = useHydratedReduce();
   const inView = useInView(ref, { margin: "-10% 0px -10% 0px" });
   const time = useMotionValue(0);
+  const played = React.useRef(false);
 
   React.useEffect(() => {
-    if (reduce) {
+    if (reduce || (paused && !played.current)) {
       time.set(rest);
       return;
     }
-    if (!inView) return;
+    if (!inView || paused) return;
+    played.current = true;
     let frame = 0;
     let last = performance.now();
     const tick = (now: number) => {
@@ -170,7 +173,7 @@ export function useLoop(duration: number, rest: number) {
     };
     frame = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(frame);
-  }, [duration, inView, reduce, rest, time]);
+  }, [duration, inView, paused, reduce, rest, time]);
 
   return { ref, time, reduce };
 }
