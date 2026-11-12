@@ -42,8 +42,8 @@ The CLI installs the dependencies, the shared `cn` helper and any CSS an item ne
 | [async-button](https://prestigeui.com/components/async-button) | A button with a smooth loading spinner and success state. |
 | [copy-button](https://prestigeui.com/components/copy-button) | An interactive copy-to-clipboard button with micro-animations. |
 | [gradient-button](https://prestigeui.com/components/gradient-button) | A glowing, animated gradient border button for primary CTAs. |
-| [payment-button](https://prestigeui.com/components/payment-button) | Standardized Apple Pay and Google Pay buttons. |
-| [interactive-button](https://prestigeui.com/components/interactive-button) | A button with advanced internal layout animations, like downloading. |
+| [payment-button](https://prestigeui.com/components/payment-button) | A checkout button that shows the amount, then processing, paid or failed, without changing size. |
+| [interactive-button](https://prestigeui.com/components/interactive-button) | A download button whose fill tracks real progress, with a percentage and a finished state. |
 | [text-reveal](https://prestigeui.com/components/text-reveal) | Word-by-word blur reveal for headlines and copy. |
 | [infinite-marquee](https://prestigeui.com/components/infinite-marquee) | Seamless looping marquee for logos, chips, and quotes. |
 | [navbar-pill](https://prestigeui.com/components/navbar-pill) | A floating capsule with a sliding active pill. |

@@ -13,11 +13,13 @@ export const SocialLoginButton = React.forwardRef<HTMLButtonElement, SocialLogin
         className={cn(
           "inline-flex h-11 cursor-pointer items-center justify-center gap-2 whitespace-nowrap rounded-md px-4 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50",
           provider === "google" &&
-            "border border-border bg-background text-foreground hover:bg-muted/50",
+            "border border-border bg-background text-foreground hover:bg-muted/50 dark:border-white/15",
           provider === "apple" &&
             "bg-[#000000] text-white hover:bg-[#000000]/90 dark:bg-white dark:text-black dark:hover:bg-white/90",
+          // GitHub's dark grey nearly matches a dark page, so dark mode uses
+          // GitHub's own light brand colour, as the Apple button does.
           provider === "github" &&
-            "bg-[#24292e] text-white hover:bg-[#24292e]/90",
+            "bg-[#24292f] text-white hover:bg-[#24292f]/90 dark:bg-[#f6f8fa] dark:text-[#24292f] dark:hover:bg-[#f6f8fa]/90",
           provider === "facebook" &&
             "bg-[#1877F2] text-white hover:bg-[#1877F2]/90",
           className

@@ -1,53 +1,210 @@
 "use client";
 
 import * as React from "react";
-import { motion, type HTMLMotionProps } from "motion/react";
+import {
+  AnimatePresence,
+  motion,
+  useReducedMotion,
+  type HTMLMotionProps,
+} from "motion/react";
+import { CircleAlert, Check, Loader2, Lock } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-interface PaymentButtonProps extends HTMLMotionProps<"button"> {
-  provider: "apple" | "google";
+type PaymentButtonState = "idle" | "processing" | "paid" | "failed";
+
+type PaymentButtonProps = Omit<HTMLMotionProps<"button">, "children"> & {
+  /** The amount shown after the label, already formatted. */
+  amount?: string;
+  /** The action word before the amount. */
+  label?: string;
+  /** Charges the customer. Resolve when paid, reject when the payment fails. */
+  action?: () => Promise<void>;
+  processingLabel?: string;
+  paidLabel?: string;
+  failedLabel?: string;
+  /** How long the failed state stays before the button can be tried again. */
+  failedDuration?: number;
+  /** Return to idle this many milliseconds after paying. Leave unset to stay paid. */
+  resetAfter?: number;
+};
+
+const EASE_OUT = [0.16, 1, 0.3, 1] as const;
+
+function Swap({
+  children,
+  reduceMotion,
+}: {
+  children: React.ReactNode;
+  reduceMotion: boolean;
+}) {
+  return (
+    <motion.span
+      initial={{ opacity: 0, y: reduceMotion ? 0 : 4 }}
+      animate={{ opacity: 1, y: 0, transition: { duration: 0.24, ease: EASE_OUT } }}
+      exit={{
+        opacity: 0,
+        y: reduceMotion ? 0 : -4,
+        transition: { duration: 0.14, ease: EASE_OUT },
+      }}
+      className="col-start-1 row-start-1 flex items-center justify-center gap-2 whitespace-nowrap"
+    >
+      {children}
+    </motion.span>
+  );
 }
 
-const providerNames = { apple: "Apple Pay", google: "Google Pay" } as const;
+const slot =
+  "invisible col-start-1 row-start-1 flex items-center justify-center gap-2 whitespace-nowrap";
 
-export const PaymentButton = React.forwardRef<HTMLButtonElement, PaymentButtonProps>(
-  ({ className, provider, ...props }, ref) => {
+const PaymentButton = React.forwardRef<HTMLButtonElement, PaymentButtonProps>(
+  (
+    {
+      amount = "$49.00",
+      label = "Pay",
+      action,
+      processingLabel = "Processing",
+      paidLabel = "Paid",
+      failedLabel = "Payment failed",
+      failedDuration = 1800,
+      resetAfter,
+      className,
+      disabled,
+      onClick,
+      ...props
+    },
+    ref,
+  ) => {
+    const [state, setState] = React.useState<PaymentButtonState>("idle");
+    const [attempt, setAttempt] = React.useState(0);
+    const reduceMotion = Boolean(useReducedMotion());
+    const generation = React.useRef(0);
+    const timer = React.useRef<number | undefined>(undefined);
+
+    React.useEffect(() => {
+      return () => {
+        generation.current += 1;
+        window.clearTimeout(timer.current);
+      };
+    }, []);
+
+    const settle = (gen: number, next: PaymentButtonState, after?: number) => {
+      setState(next);
+      if (after === undefined) return;
+      timer.current = window.setTimeout(() => {
+        if (generation.current === gen) setState("idle");
+      }, after);
+    };
+
+    const handleClick = async (event: React.MouseEvent<HTMLButtonElement>) => {
+      onClick?.(event);
+      if (event.defaultPrevented || !action || disabled || state !== "idle") return;
+
+      const gen = ++generation.current;
+      setState("processing");
+      try {
+        await action();
+        if (generation.current === gen) settle(gen, "paid", resetAfter);
+      } catch {
+        if (generation.current !== gen) return;
+        setAttempt((n) => n + 1);
+        settle(gen, "failed", failedDuration);
+      }
+    };
+
+    const idle = (
+      <>
+        <Lock aria-hidden className="size-4 opacity-70" strokeWidth={2.25} />
+        <span>
+          {label} <span className="tabular-nums">{amount}</span>
+        </span>
+      </>
+    );
+    const processing = (
+      <>
+        <Loader2 aria-hidden className="size-4 animate-spin [animation-duration:700ms]" />
+        {processingLabel}
+      </>
+    );
+    const paid = (
+      <>
+        <Check aria-hidden className="size-4" strokeWidth={2.5} />
+        {paidLabel}
+      </>
+    );
+    const failed = (
+      <>
+        <CircleAlert aria-hidden className="size-4" strokeWidth={2.25} />
+        {failedLabel}
+      </>
+    );
+
     return (
       <motion.button
         ref={ref}
-        // Not a submit button by default, so it never posts a form it sits in.
         type="button"
-        aria-label={`Pay with ${providerNames[provider]}`}
-        whileTap={{ scale: 0.98 }}
+        disabled={Boolean(disabled) || state !== "idle"}
+        onClick={handleClick}
+        aria-busy={state === "processing"}
+        data-state={state}
+        // One small shake per failed attempt; nothing under reduced motion.
+        animate={
+          state === "failed" && !reduceMotion
+            ? { x: [0, -4, 4, -3, 3, 0], transition: { duration: 0.36, ease: "easeOut" } }
+            : { x: 0 }
+        }
         className={cn(
-          "inline-flex h-12 w-full max-w-[240px] cursor-pointer items-center justify-center rounded-[4px] px-4 transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50",
-          provider === "apple" && "bg-black text-white dark:bg-white dark:text-black",
-          provider === "google" && "border border-border bg-black text-white dark:bg-white dark:text-black",
-          className
+          "relative inline-flex h-12 w-full max-w-[280px] cursor-pointer items-center justify-center overflow-hidden rounded-md bg-primary px-5 text-sm font-medium text-primary-foreground",
+          "transition-[background-color,transform,scale] duration-150 ease-[cubic-bezier(0.16,1,0.3,1)] hover:bg-primary/90 active:scale-[0.98]",
+          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+          "disabled:pointer-events-none data-[state=idle]:disabled:opacity-50",
+          className,
         )}
         {...props}
       >
-        {provider === "apple" && (
-          <span aria-hidden className="flex items-center gap-1.5 font-semibold text-lg">
-            <svg className="size-5 mb-0.5 fill-current" viewBox="0 0 24 24">
-              <path d="M17.05 20.28c-.98.95-2.05.8-3.08.35-1.09-.46-2.09-.48-3.24 0-1.44.62-2.2.44-3.06-.35C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.09 2.31-.86 3.59-.8 1.51.05 2.7.72 3.4 1.8-3.05 1.73-2.58 5.86.53 7.14-.64 1.54-1.48 2.97-2.6 4.03M12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.32 2.4-1.92 4.31-3.74 4.25"/>
-            </svg>
-            Pay
-          </span>
-        )}
-        {provider === "google" && (
-          <span aria-hidden className="flex items-center gap-1.5 font-sans font-medium text-[19px] tracking-tight text-white dark:text-black">
-            <svg className="size-5" viewBox="0 0 24 24">
-              <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
-              <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
-              <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
-              <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
-            </svg>
-            Pay
-          </span>
-        )}
+        <span className="grid">
+          {/* Every state sits in the same cell, so the button never resizes. */}
+          <span aria-hidden className={slot}>{idle}</span>
+          <span aria-hidden className={slot}>{processing}</span>
+          <span aria-hidden className={slot}>{paid}</span>
+          <span aria-hidden className={slot}>{failed}</span>
+
+          <AnimatePresence initial={false}>
+            {state === "idle" && (
+              <Swap key="idle" reduceMotion={reduceMotion}>
+                {idle}
+              </Swap>
+            )}
+            {state === "processing" && (
+              <Swap key="processing" reduceMotion={reduceMotion}>
+                {processing}
+              </Swap>
+            )}
+            {state === "paid" && (
+              <Swap key="paid" reduceMotion={reduceMotion}>
+                {paid}
+              </Swap>
+            )}
+            {state === "failed" && (
+              <Swap key={`failed-${attempt}`} reduceMotion={reduceMotion}>
+                {failed}
+              </Swap>
+            )}
+          </AnimatePresence>
+        </span>
+
+        <span className="sr-only" aria-live="polite">
+          {state === "processing"
+            ? processingLabel
+            : state === "paid"
+              ? paidLabel
+              : state === "failed"
+                ? failedLabel
+                : ""}
+        </span>
       </motion.button>
     );
-  }
+  },
 );
 PaymentButton.displayName = "PaymentButton";
+
+export { PaymentButton, type PaymentButtonProps };
